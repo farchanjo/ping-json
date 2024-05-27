@@ -1,4 +1,4 @@
-use std::net::{AddrParseError, IpAddr};
+use std::net::{IpAddr};
 use std::time::Duration;
 use futures;
 use tokio;
@@ -61,13 +61,13 @@ fn parse_options(options: Options) {
             println!("{}", "Arguments is empty");
             std::process::exit(1);
         }
-        Some(firstIpAddr) => {
-            match firstIpAddr.parse() {
+        Some(first_ip_addr) => {
+            match first_ip_addr.parse() {
                 Ok(addr) => {
                     send_ping(addr, options);
                 }
                 _ => {
-                    println!("Cannot parse ip addres for: {}", firstIpAddr)
+                    println!("Cannot parse ip address for: {} - ONLY IP", first_ip_addr)
                 }
             }
         }
