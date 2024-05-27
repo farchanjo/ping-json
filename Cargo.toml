@@ -1,0 +1,11 @@
+[package]
+name = "ping-json"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio-ping = "0.3.0"
+tokio = "0.1"
+futures = "0.1"
+serde_json = "1.0"
+serde = { version = "1.0.203", features = ["derive"] }
