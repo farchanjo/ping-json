@@ -1,4 +1,4 @@
-use std::net::IpAddr;
+use std::net::{AddrParseError, IpAddr};
 use std::time::Duration;
 use futures;
 use tokio;
@@ -15,6 +15,7 @@ struct PingResult {
     time_string: String,
     timeout: bool,
     ip: String,
+    seq: i32,
 }
 
 struct Options {
@@ -41,11 +42,6 @@ fn main() {
         ap.parse_args_or_exit();
     }
 
-    if options.args.is_empty() {
-        println!("{}", "Arguments is empty");
-        std::process::exit(1);
-    }
-
     if options.count < 1 || options.count > 60 {
         println!("options cannot be less than 1 and bigger the 60, actual value {}", options.count);
         std::process::exit(1);
@@ -55,22 +51,41 @@ fn main() {
         println!("options cannot be less than 1 and bigger the 60, actual value {}", options.count);
         std::process::exit(1);
     }
-
-    send_ping(options);
+    parse_options(options);
     std::process::exit(0);
 }
 
-fn send_ping(options: Options) {
-    let addr = options.args.first().unwrap().parse().unwrap();
+fn parse_options(options: Options) {
+    match options.args.first() {
+        None => {
+            println!("{}", "Arguments is empty");
+            std::process::exit(1);
+        }
+        Some(firstIpAddr) => {
+            match firstIpAddr.parse() {
+                Ok(addr) => {
+                    send_ping(addr, options);
+                }
+                _ => {
+                    println!("Cannot parse ip addres for: {}", firstIpAddr)
+                }
+            }
+        }
+    }
+}
+
+fn send_ping(addr: IpAddr, options: Options) {
     let pinger = tokio_ping::Pinger::new();
     let stream = pinger.and_then(move |pinger| Ok(pinger.chain(addr).stream()));
     let future = stream.and_then(move |stream| {
+        let mut counter = 1;
         stream.take(options.count).for_each(move |mb_time| {
             match mb_time {
-                Some(time) => print_json(time, addr),
-                None => print_json_timeout(),
+                Some(time) => print_json(time, addr, counter),
+                None => print_json_timeout(counter),
             }
             sleep(Duration::from_secs(options.wait));
+            counter += 1;
             Ok(())
         })
     });
@@ -80,8 +95,8 @@ fn send_ping(options: Options) {
     }))
 }
 
-fn print_json_timeout() {
-    let ping_object = PingResult { usec: 0, time_string: String::new(), timeout: true, ip: String::new() };
+fn print_json_timeout(counter: i32) {
+    let ping_object = PingResult { usec: 0, time_string: String::new(), timeout: true, ip: String::new(), seq: counter };
     let json_as_string = serde_json::to_string(&ping_object);
     match json_as_string {
         Ok(json) => println!("{}", json),
@@ -89,8 +104,8 @@ fn print_json_timeout() {
     }
 }
 
-fn print_json(time: Duration, addr: IpAddr) {
-    let ping_object = PingResult { usec: time.as_micros(), time_string: std::format!("{:?}", time), timeout: false, ip: addr.to_string() };
+fn print_json(time: Duration, addr: IpAddr, counter: i32) {
+    let ping_object = PingResult { usec: time.as_micros(), time_string: std::format!("{:?}", time), timeout: false, ip: addr.to_string(), seq: counter };
     let json_as_string = serde_json::to_string(&ping_object);
     match json_as_string {
         Ok(json) => println!("{}", json),
