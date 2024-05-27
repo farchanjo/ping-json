@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+argparse = "0.2.2"
 tokio-ping = "0.3.0"
 tokio = "0.1"
 futures = "0.1"
